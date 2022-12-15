@@ -8,6 +8,7 @@ import (
 	"github.com/kiegroup/container-builder/util"
 	"github.com/kiegroup/container-builder/util/log"
 	corev1 "k8s.io/api/core/v1"
+	"path"
 )
 
 type resource struct {
@@ -71,8 +72,30 @@ func NewBuild(platformBuild api.PlatformBuild, publishImage string, buildName st
 		C:         context.TODO(),
 	}
 
+	// TODO: Improve this check with factories instead
 	if platformBuild.Spec.BuildStrategy == api.BuildStrategyPod && platformBuild.Spec.PublishStrategy == api.PlatformBuildPublishStrategyKaniko {
 		ctx.Build = api.NewKanikoBuild(platformBuild, publishImage, buildName)
+	} else if platformBuild.Spec.BuildStrategy == api.BuildStrategyRoutine && platformBuild.Spec.PublishStrategy == api.PlatformBuildPublishStrategyKaniko {
+		ctx.Build = &api.Build{
+			Spec: api.BuildSpec{
+				Tasks: []api.Task{
+					{Kaniko: &api.KanikoTask{
+						BaseTask: api.BaseTask{Name: "KanikoTask"},
+						PublishTask: api.PublishTask{
+							ContextDir: path.Join("/builder", buildName, "context"),
+							BaseImage:  platformBuild.Spec.BaseImage,
+							Image:      publishImage,
+							Registry:   platformBuild.Spec.Registry,
+						},
+						Cache: api.KanikoTaskCache{},
+					}},
+				},
+				Strategy: api.BuildStrategyRoutine,
+				Timeout:  *platformBuild.Spec.Timeout,
+			},
+		}
+		ctx.Build.Name = buildName
+		ctx.Build.Namespace = platformBuild.Namespace
 	} else {
 		panic(fmt.Errorf("BuildStrategy %s with PublishStrategy %s is not supported", platformBuild.Spec.BuildStrategy, platformBuild.Spec.PublishStrategy))
 	}
@@ -99,10 +122,17 @@ func (b *scheduler) WithResource(target string, content []byte) Scheduler {
 // Schedule schedules a new build in the platform
 func (b *scheduler) Schedule() (*api.Build, error) {
 	// TODO: create a handler to mount the resources according to the platform/context options (for now we only have CM, PoC level)
-	if err := mountResourcesWithConfigMap(&b.Context, &b.Resources); err != nil {
-		return nil, err
+	if b.builder.Context.Build.Spec.Strategy == api.BuildStrategyPod {
+		if err := mountResourcesWithConfigMap(&b.Context, &b.Resources); err != nil {
+			return nil, err
+		}
+		return b.Reconcile()
+	} else if b.builder.Context.Build.Spec.Strategy == api.BuildStrategyRoutine {
+		return b.Reconcile()
+	} else {
+		panic(fmt.Errorf("BuildStrategy %s with PublishStrategy %s is not supported", b.Context.Build.Spec.Strategy, b.Context.Build.Spec.Strategy))
 	}
-	return b.Reconcile()
+
 }
 
 func (b *builder) WithClient(client client.Client) Builder {
