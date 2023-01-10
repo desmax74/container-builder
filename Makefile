@@ -91,3 +91,11 @@ vendor:
 	go mod tidy -compat=1.19
 	go mod vendor
 	go mod verify
+
+.PHONY: docker-integration-test
+docker-integration-test: ## Test docker integration tests
+	go test ./... -tags integration_docker
+
+.PHONY: podman-integration-test
+podman-integration-test: ## Test podman integration tests
+	go test ./... -tags integration_podman

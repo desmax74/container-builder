@@ -19,46 +19,15 @@
 package cleaner
 
 import (
-	"testing"
-	"time"
-
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"testing"
+	"time"
 )
-
-// --------------------------- TEST SUITE -----------------
-type DockerTestSuite struct {
-	suite.Suite
-	LocalRegistry DockerLocalRegistry
-	RegistryID    string
-	Docker        Docker
-}
 
 func TestDockerIntegrationTestSuite(t *testing.T) {
 	suite.Run(t, new(DockerTestSuite))
-}
-
-func (suite *DockerTestSuite) SetupSuite() {
-	dockerRegistryContainer, registryID, docker := SetupDockerSocket()
-	if len(registryID) > 0 {
-		suite.LocalRegistry = dockerRegistryContainer
-		suite.RegistryID = registryID
-		suite.Docker = docker
-	} else {
-		assert.FailNow(suite.T(), "Initialization failed %s", registryID)
-	}
-}
-
-func (suite *DockerTestSuite) TearDownSuite() {
-	registryID := suite.LocalRegistry.GetRegistryRunningID()
-	if len(registryID) > 0 {
-		DockerTearDown(suite.LocalRegistry)
-	} else {
-		suite.LocalRegistry.StopRegistry()
-	}
-	purged, _ := suite.Docker.PurgeContainer("", REGISTRY)
-	logrus.Infof("Purged containers %t", purged)
 }
 
 // --------------------------- TESTS -----------------
@@ -68,16 +37,35 @@ func (suite *DockerTestSuite) TestImagesOperationsOnDockerRegistryForTest() {
 	assert.NotNil(suite.T(), registryContainer)
 	assert.Nil(suite.T(), err)
 	repos, err := registryContainer.GetRepositories()
+	initialSize := len(repos)
 	assert.Nil(suite.T(), err)
-	assert.True(suite.T(), len(repos) == 0)
-	assert.Nil(suite.T(), suite.Docker.PullImage(TEST_IMAGE), "Pull image failed")
-	assert.Nil(suite.T(), suite.Docker.TagImage(TEST_IMAGE_TAG, TEST_IMAGE_LOCAL_TAG), "Tag image failed")
-	assert.Nil(suite.T(), suite.Docker.PushImage(TEST_IMAGE_LOCAL_TAG, REGISTRY_CONTAINER_URL_FROM_DOCKER_SOCKET, "", ""), "Push image in the DOcker container failed")
+
+	pullErr := suite.Docker.PullImage(TEST_IMAGE + ":" + LATEST_TAG)
+	if pullErr != nil {
+		logrus.Infof("Pull Error:%s", pullErr)
+	}
+	assert.Nil(suite.T(), pullErr, "Pull image failed")
+	time.Sleep(2 * time.Second) // Needed on CI
+	assert.True(suite.T(), suite.LocalRegistry.IsImagePresent(TEST_IMAGE), "Test image not found in the registry after the pull")
+	tagErr := suite.Docker.TagImage(TEST_IMAGE, TEST_IMAGE_LOCAL_TAG)
+	if tagErr != nil {
+		logrus.Infof("Tag Error:%s", tagErr)
+	}
+
+	assert.Nil(suite.T(), tagErr, "Tag image failed")
+	//time.Sleep(2 * time.Second) // Needed on CI
+	pushErr := suite.Docker.PushImage(TEST_IMAGE_LOCAL_TAG, REGISTRY_CONTAINER_URL_FROM_DOCKER_SOCKET, "", "")
+	if pushErr != nil {
+		logrus.Infof("Push Error:%s", pushErr)
+	}
+
+	assert.Nil(suite.T(), pushErr, "Push image in the DOcker container failed")
 	//give the time to update the registry status
-	time.Sleep(2 * time.Second)
+	//time.Sleep(2 * time.Second)
 	repos, err = registryContainer.GetRepositories()
 	assert.Nil(suite.T(), err)
-	assert.True(suite.T(), len(repos) == 1)
+	assert.NotNil(suite.T(), repos)
+	assert.True(suite.T(), len(repos) == initialSize+1)
 
 	digest, erroDIgest := registryContainer.Connection.ManifestDigest(TEST_IMAGE, LATEST_TAG)
 	assert.Nil(suite.T(), erroDIgest)

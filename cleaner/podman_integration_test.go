@@ -25,37 +25,8 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-// --------------------------- TEST SUITE -----------------
-type PodmanTestSuite struct {
-	suite.Suite
-	LocalRegistry PodmanLocalRegistry
-	RegistryID    string
-	Podman        Podman
-}
-
 func TestPodmanIntegrationTestSuite(t *testing.T) {
 	suite.Run(t, new(PodmanTestSuite))
-}
-
-func (suite *PodmanTestSuite) SetupSuite() {
-	localRegistry, registryID, podman := SetupPodmanSocket()
-	if len(registryID) > 0 {
-		suite.LocalRegistry = localRegistry
-		suite.RegistryID = registryID
-		suite.Podman = podman
-	} else {
-		assert.FailNow(suite.T(), "Initialization failed")
-	}
-}
-
-func (suite *PodmanTestSuite) TearDownSuite() {
-	registryID := suite.LocalRegistry.GetRegistryRunningID()
-	if len(registryID) > 0 {
-		PodmanTearDown(suite.LocalRegistry)
-	} else {
-		suite.LocalRegistry.StopRegistry()
-	}
-	suite.Podman.PurgeContainer("", REGISTRY_FULL)
 }
 
 // --------------------------- TESTS -----------------

@@ -1,27 +1,60 @@
-name: go
-on:
-  pull_request:
-    types: [opened, reopened, edited, synchronize]
-    branches:
-      - main
+name: Go Build
+
+on: pull_request
+
+env:
+  REGISTRY_STORAGE_DELETE_ENABLED : true
 
 jobs:
-  unit:
-    name: unit
+  unit-tests:
+    concurrency:
+      group: kogito_serverless_operator_pr-unit-${{ github.head_ref }}
+      cancel-in-progress: true
+    timeout-minutes: 120
+    name: Unit Tests
     runs-on: ubuntu-20.04
     steps:
-      - name: Install package
+      - name: Install packages
         uses: awalsh128/cache-apt-pkgs-action@latest
         with:
           packages: libbtrfs-dev libgpgme-dev libdevmapper-dev
           version: 1.0
-      - uses: actions/setup-go@v2
+      - name: Setup golang
+        uses: actions/setup-go@v2
         with:
           go-version: 1.19
-      - uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v2
         with:
           fetch-depth: 0
       - run: make test
-      - uses: shogo82148/actions-goveralls@v1
+
+  integration-tests:
+    needs: unit-tests
+    strategy:
+      matrix:
+        container-engine:
+          - docker
+      fail-fast: false
+    concurrency:
+      group: kogito_serverless_operator_pr-integration-${{ matrix.container-engine }}-${{ github.head_ref }}
+      cancel-in-progress: true
+    timeout-minutes: 120
+    name: Integration tests (${{ matrix.container-engine }})
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Install packages
+        uses: awalsh128/cache-apt-pkgs-action@latest
         with:
-          path-to-profile: cover.out
+          packages: libbtrfs-dev libgpgme-dev libdevmapper-dev
+          version: 1.0
+      - name: Setup golang
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.19
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Run integration tests
+        run: make ${{ matrix.container-engine }}-integration-test

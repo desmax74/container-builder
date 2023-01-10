@@ -37,6 +37,9 @@ const TEST_REGISTRY_REPO = "localhost:5000/"
 const TEST_REPO = "docker.io/library/"
 const LATEST_TAG = "latest"
 const TEST_IMAGE_TAG = "busybox:latest"
+const TEST_IMAGE_SECOND = "alpine"
+const TEST_IMAGE_SECOND_TAG = "alpine:latest"
+const TEST_IMAGE_SECOND_LOCAL_TAG = "localhost:5000/alpine:latest"
 const TEST_IMAGE_LOCAL_TAG = "localhost:5000/busybox:latest"
 
 type Registry interface {
