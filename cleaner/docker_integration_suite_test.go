@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+// --------------------------- TEST SUITE -----------------
 type DockerTestSuite struct {
 	suite.Suite
 	LocalRegistry DockerLocalRegistry

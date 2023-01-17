@@ -35,6 +35,7 @@ jobs:
       matrix:
         container-engine:
           - docker
+          - podman
       fail-fast: false
     concurrency:
       group: kogito_serverless_operator_pr-integration-${{ matrix.container-engine }}-${{ github.head_ref }}

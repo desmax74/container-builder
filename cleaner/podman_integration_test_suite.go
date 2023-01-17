@@ -1,4 +1,4 @@
-//go:build integration_docker
+//go:build integration_podman
 
 /*
  * Copyright 2022 Red Hat, Inc. and/or its affiliates.

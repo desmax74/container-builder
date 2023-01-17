@@ -35,13 +35,13 @@ func TestRegistryPodmanIntegrationTestSuite(t *testing.T) {
 
 // -------------------------------------- TESTS -----------------------------
 
-func (suite *PodmanTestSuite) testRegistry() {
+func (suite *PodmanTestSuite) TestRegistry() {
 	assert.Truef(suite.T(), suite.RegistryID != "", "Registry not started")
 	assert.Truef(suite.T(), suite.LocalRegistry.IsRegistryImagePresent(), "Registry image not present")
 	assert.Truef(suite.T(), suite.LocalRegistry.IsRegistryRunning(), "Registry container not running")
 }
 
-func (suite *PodmanTestSuite) testPullTagPush() {
+func (suite *PodmanTestSuite) TestPullTagPush() {
 
 	assert.Truef(suite.T(), suite.RegistryID != "", "Registry not started")
 	registryContainer, err := GetRegistryContainer()

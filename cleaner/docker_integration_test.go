@@ -53,7 +53,7 @@ func (suite *DockerTestSuite) TestImagesOperationsOnDockerRegistryForTest() {
 	}
 
 	assert.Nil(suite.T(), tagErr, "Tag image failed")
-	//time.Sleep(2 * time.Second) // Needed on CI
+	time.Sleep(2 * time.Second) // Needed on CI
 	pushErr := suite.Docker.PushImage(TEST_IMAGE_LOCAL_TAG, REGISTRY_CONTAINER_URL_FROM_DOCKER_SOCKET, "", "")
 	if pushErr != nil {
 		logrus.Infof("Push Error:%s", pushErr)
@@ -61,7 +61,7 @@ func (suite *DockerTestSuite) TestImagesOperationsOnDockerRegistryForTest() {
 
 	assert.Nil(suite.T(), pushErr, "Push image in the DOcker container failed")
 	//give the time to update the registry status
-	//time.Sleep(2 * time.Second)
+	time.Sleep(2 * time.Second)
 	repos, err = registryContainer.GetRepositories()
 	assert.Nil(suite.T(), err)
 	assert.NotNil(suite.T(), repos)
